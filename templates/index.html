@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DocIntel</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <span class="logo">DocIntel</span>
+    <span class="tagline">Ask questions about your documents</span>
+  </header>
+
+  <main>
+    <!-- Left panel: upload -->
+    <section class="panel" id="upload-panel">
+      <h2>Documents</h2>
+
+      <div class="drop-zone" id="drop-zone">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <p>Drop a file here or <label for="file-input" class="browse-link">browse</label></p>
+        <input type="file" id="file-input" accept=".pdf,.docx,.txt,.md" hidden />
+      </div>
+
+      <div id="upload-status" class="status-msg hidden"></div>
+
+      <ul id="doc-list" class="doc-list"></ul>
+    </section>
+
+    <!-- Right panel: chat -->
+    <section class="panel" id="chat-panel">
+      <h2>Ask a Question</h2>
+
+      <div id="chat-messages" class="chat-messages">
+        <div class="empty-state">Upload a document, then ask a question about it.</div>
+      </div>
+
+      <div class="filter-bar">
+        <label for="doc-filter">Search in:</label>
+        <select id="doc-filter">
+          <option value="">All documents</option>
+        </select>
+      </div>
+
+      <form id="ask-form" class="ask-form">
+        <input type="text" id="question-input" placeholder="Ask something about your documents..." autocomplete="off" />
+        <button type="submit" id="ask-btn">Ask</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

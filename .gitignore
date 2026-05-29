@@ -1,0 +1,28 @@
+# Environment
+.env
+
+# Vector database (auto-recreated by re-ingesting documents)
+chroma_db/
+
+# Uploaded files (temporary, deleted after ingestion)
+uploads/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
