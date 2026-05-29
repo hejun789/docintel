@@ -18,9 +18,9 @@ A RAG (Retrieval-Augmented Generation) pipeline that lets you upload documents a
 
 ## Demo
 
-Upload a PDF → Ask a question → Get a grounded answer with page citations.
+**Live demo:** [https://huggingface.co/spaces/hejun123/docintel](https://huggingface.co/spaces/hejun123/docintel)
 
-![DocIntel UI](https://i.imgur.com/placeholder.png)
+Upload a PDF → Ask a question → Get a grounded answer with page citations.
 
 ---
 
