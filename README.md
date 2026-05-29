@@ -1,3 +1,12 @@
+---
+title: DocIntel
+emoji: 📄
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+pinned: false
+---
+
 # DocIntel — AI Document Intelligence System
 
 A RAG (Retrieval-Augmented Generation) pipeline that lets you upload documents and ask natural language questions against them. Answers are grounded in your documents, not the internet — with source citations down to the page number.
