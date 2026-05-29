@@ -9,12 +9,13 @@ OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.1-8b-instru
 
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+USE_RERANKER = os.getenv("USE_RERANKER", "true").lower() == "true"
 
 CHROMA_DIR = "chroma_db"
 CHROMA_COLLECTION = "documents"
 
 CHUNK_SIZE = 512
 CHUNK_OVERLAP = 100
-TOP_K_RETRIEVE = 20   # how many chunks to fetch from ChromaDB
-TOP_K_FINAL = 3       # how many to keep after re-ranking and send to LLM
-RELEVANCE_THRESHOLD = -2.0  # cross-encoder logit; below this = no relevant content
+TOP_K_RETRIEVE = 20
+TOP_K_FINAL = 3
+RELEVANCE_THRESHOLD = -2.0 if USE_RERANKER else 0.3

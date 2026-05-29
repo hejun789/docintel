@@ -1,8 +1,8 @@
 import chromadb
-from sentence_transformers import SentenceTransformer, CrossEncoder
+from sentence_transformers import SentenceTransformer
 from config import (
     CHROMA_DIR, CHROMA_COLLECTION, EMBEDDING_MODEL, RERANKER_MODEL,
-    TOP_K_RETRIEVE, TOP_K_FINAL, RELEVANCE_THRESHOLD,
+    TOP_K_RETRIEVE, TOP_K_FINAL, RELEVANCE_THRESHOLD, USE_RERANKER,
 )
 
 _embedder = None
@@ -20,6 +20,7 @@ def _get_embedder():
 def _get_reranker():
     global _reranker
     if _reranker is None:
+        from sentence_transformers import CrossEncoder
         _reranker = CrossEncoder(RERANKER_MODEL)
     return _reranker
 
@@ -64,15 +65,20 @@ def retrieve(question: str, top_k: int = TOP_K_RETRIEVE, source_filter: str = No
     if not candidates:
         return {"chunks": [], "warning": "No documents have been uploaded yet."}
 
-    # Re-rank: cross-encoder scores each (question, chunk) pair jointly
-    reranker = _get_reranker()
-    pairs = [(question, c["text"]) for c in candidates]
-    scores = reranker.predict(pairs).tolist()
+    if USE_RERANKER:
+        reranker = _get_reranker()
+        pairs = [(question, c["text"]) for c in candidates]
+        scores = reranker.predict(pairs).tolist()
+        for chunk, score in zip(candidates, scores):
+            chunk["score"] = round(score, 4)
+        ranked = sorted(candidates, key=lambda c: c["score"], reverse=True)
+    else:
+        # fallback: use bi-encoder distance converted to similarity score
+        for i, chunk in enumerate(candidates):
+            distance = results["distances"][0][i]
+            chunk["score"] = round(max(0.0, 1 - distance / 2), 4)
+        ranked = sorted(candidates, key=lambda c: c["score"], reverse=True)
 
-    for chunk, score in zip(candidates, scores):
-        chunk["score"] = round(score, 4)
-
-    ranked = sorted(candidates, key=lambda c: c["score"], reverse=True)
     top_chunks = ranked[:TOP_K_FINAL]
 
     warning = None

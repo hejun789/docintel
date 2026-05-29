@@ -11,3 +11,5 @@ services:
         sync: false
       - key: OPENROUTER_MODEL
         value: nvidia/nemotron-3-super-120b-a12b:free
+      - key: USE_RERANKER
+        value: "false"
