@@ -135,6 +135,27 @@ Runs entirely locally at no cost, produces 384-dimensional vectors, and performs
 
 ---
 
+## Evaluation
+
+Retrieval is measured against a hand-labeled question set (`eval/eval_set.json`), where each question is tagged with a distinctive phrase that must appear in the retrieved chunk. `eval/evaluate.py` reports recall and quantifies the value of the re-ranking stage:
+
+```
+python eval/evaluate.py
+```
+
+Results on a 14-question set (sample research paper):
+
+| Metric | Score | Meaning |
+|---|---|---|
+| Recall@20 | 93% | Gold chunk retrieved among bi-encoder candidates |
+| Hit@3 (bi-encoder only) | 79% | Gold chunk in top-3 **without** re-ranking |
+| Hit@3 (with re-ranker) | **93%** | Gold chunk in top-3 **with** cross-encoder re-ranking |
+| MRR | 0.93 | Mean reciprocal rank after re-ranking |
+
+The cross-encoder re-ranker lifts Hit@3 from **79% → 93%** — concrete evidence that the second retrieval stage earns its cost by pulling the genuinely relevant chunk into the top-3 that reach the LLM.
+
+---
+
 ## Planned improvements
 
 - Source passage highlighting (show exact text used, not just page number)

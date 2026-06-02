@@ -1,0 +1,76 @@
+{
+  "document": "HeJun(TP086047) Assignment Part1.docx",
+  "description": "Labeled retrieval eval set. Each item has a question and one or more distinctive substrings ('expects') that must appear in a retrieved chunk for it to count as the relevant (gold) chunk. Matching is case-insensitive.",
+  "questions": [
+    {
+      "question": "What percentage of phishing emails now contain AI-generated content?",
+      "expects": ["82.6%"],
+      "page": 1
+    },
+    {
+      "question": "What three detection techniques does PhishGuard-LLM unify into one pipeline?",
+      "expects": ["fine-tuned classification, zero-shot reasoning"],
+      "page": 1
+    },
+    {
+      "question": "How does the system detect AI-generated content before classification?",
+      "expects": ["burstiness"],
+      "page": 4
+    },
+    {
+      "question": "What does research objective RO2 aim to develop?",
+      "expects": ["zero-shot GPT"],
+      "page": 3
+    },
+    {
+      "question": "Which classifier gives over 0.99 accuracy for phishing detection?",
+      "expects": ["0.99"],
+      "page": 4
+    },
+    {
+      "question": "What does the Decision Fusion Layer use to combine the detection results?",
+      "expects": ["weighted confidence-based scoring"],
+      "page": 4
+    },
+    {
+      "question": "What explainability methods does the framework use to justify a flag?",
+      "expects": ["SHAP"],
+      "page": 3
+    },
+    {
+      "question": "What were the FBI IC3 reported global cybercrime losses in 2024?",
+      "expects": ["16.6 billion"],
+      "page": 3
+    },
+    {
+      "question": "How many phishing attacks did the APWG record globally in 2025?",
+      "expects": ["3.8 million"],
+      "page": 2
+    },
+    {
+      "question": "What is the average cost of a phishing-related data breach in 2024?",
+      "expects": ["4.88 million"],
+      "page": 2
+    },
+    {
+      "question": "What is the polymorphic phishing problem?",
+      "expects": ["polymorphic"],
+      "page": 2
+    },
+    {
+      "question": "What does the meta-classifier combine besides user-defined characteristics?",
+      "expects": ["XGBoost"],
+      "page": 4
+    },
+    {
+      "question": "What does the Output Layer produce for flagged emails?",
+      "expects": ["quarantining"],
+      "page": 4
+    },
+    {
+      "question": "What handcrafted features did traditional machine learning classifiers rely on?",
+      "expects": ["handcrafted features"],
+      "page": 2
+    }
+  ]
+}
