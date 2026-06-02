@@ -7,6 +7,9 @@ chroma_db/
 # Uploaded files (temporary, deleted after ingestion)
 uploads/
 
+# Runtime logs
+*.log
+
 # Python
 __pycache__/
 *.pyc

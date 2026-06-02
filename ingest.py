@@ -1,28 +1,32 @@
 import os
 import fitz  # PyMuPDF
-import chromadb
 import docx as python_docx
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from sentence_transformers import SentenceTransformer
+from langchain_chroma import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_core.documents import Document as LCDocument
 from config import CHROMA_DIR, CHROMA_COLLECTION, EMBEDDING_MODEL
 
 _embedder = None
-_collection = None
+_vectorstore = None
 
 
 def _get_embedder():
     global _embedder
     if _embedder is None:
-        _embedder = SentenceTransformer(EMBEDDING_MODEL)
+        _embedder = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
     return _embedder
 
 
-def _get_collection():
-    global _collection
-    if _collection is None:
-        client = chromadb.PersistentClient(path=CHROMA_DIR)
-        _collection = client.get_or_create_collection(CHROMA_COLLECTION)
-    return _collection
+def _get_vectorstore():
+    global _vectorstore
+    if _vectorstore is None:
+        _vectorstore = Chroma(
+            collection_name=CHROMA_COLLECTION,
+            embedding_function=_get_embedder(),
+            persist_directory=CHROMA_DIR,
+        )
+    return _vectorstore
 
 
 def extract_text_from_pdf(filepath: str) -> list[dict]:
@@ -120,36 +124,42 @@ def chunk_text(pages: list[dict], filename: str) -> list[dict]:
 
 def store_chunks(chunks: list[dict]) -> int:
     """
-    Embed each chunk and store it in ChromaDB with metadata.
+    Embed each chunk and store it in ChromaDB via LangChain's Chroma vectorstore.
+    Deletes existing chunks for the same source first (upsert behaviour).
     Returns the number of chunks stored.
     """
-    embedder = _get_embedder()
-    collection = _get_collection()
+    vectorstore = _get_vectorstore()
 
-    texts = [c["text"] for c in chunks]
-    embeddings = embedder.encode(texts, show_progress_bar=True).tolist()
+    # Remove any existing chunks for this source before re-ingesting
+    source = chunks[0]["source"] if chunks else None
+    if source:
+        existing = vectorstore._collection.get(where={"source": source})
+        if existing["ids"]:
+            vectorstore.delete(ids=existing["ids"])
 
-    ids = [f"{c['source']}_chunk_{c['chunk_index']}" for c in chunks]
-    metadatas = [
-        {
-            "source": c["source"],
-            "page_number": c["page_number"],
-            "chunk_index": c["chunk_index"],
-        }
+    documents = [
+        LCDocument(
+            page_content=c["text"],
+            metadata={
+                "source": c["source"],
+                "page_number": c["page_number"],
+                "chunk_index": c["chunk_index"],
+            },
+        )
         for c in chunks
     ]
-
-    collection.upsert(ids=ids, embeddings=embeddings, documents=texts, metadatas=metadatas)
+    ids = [f"{c['source']}_chunk_{c['chunk_index']}" for c in chunks]
+    vectorstore.add_documents(documents, ids=ids)
     return len(chunks)
 
 
 def list_documents() -> list[str]:
     """Return sorted list of unique source filenames stored in ChromaDB."""
-    collection = _get_collection()
-    results = collection.get(include=["metadatas"])
+    vectorstore = _get_vectorstore()
+    results = vectorstore._collection.get(include=["metadatas"])
     if not results["metadatas"]:
         return []
-    return sorted({m["source"] for m in results["metadatas"]})
+    return sorted({m["source"] for m in results["metadatas"] if m})
 
 
 def delete_document(filename: str) -> int:
@@ -157,11 +167,11 @@ def delete_document(filename: str) -> int:
     Remove all chunks belonging to a document from ChromaDB.
     Returns the number of chunks deleted.
     """
-    collection = _get_collection()
-    results = collection.get(where={"source": filename})
+    vectorstore = _get_vectorstore()
+    results = vectorstore._collection.get(where={"source": filename})
     count = len(results["ids"])
     if count > 0:
-        collection.delete(where={"source": filename})
+        vectorstore.delete(ids=results["ids"])
     return count
 
 

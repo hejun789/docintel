@@ -1,5 +1,5 @@
-import chromadb
-from sentence_transformers import SentenceTransformer
+from langchain_chroma import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
 from config import (
     CHROMA_DIR, CHROMA_COLLECTION, EMBEDDING_MODEL, RERANKER_MODEL,
     TOP_K_RETRIEVE, TOP_K_FINAL, RELEVANCE_THRESHOLD, USE_RERANKER,
@@ -7,13 +7,28 @@ from config import (
 
 _embedder = None
 _reranker = None
-_collection = None
+_vectorstore = None
+
+# Broad "summarize the whole document" style questions don't map to any single
+# passage, so the cross-encoder scores every chunk low and the relevance gate
+# would wrongly reject them. Detect these and skip the gate.
+_SUMMARY_PATTERNS = (
+    "summar", "main point", "main idea", "overall", "key point", "key takeaway",
+    "what is this document about", "what is the document about",
+    "what is this paper about", "what's this about", "tl;dr", "tldr",
+    "gist", "in a nutshell", "high level", "high-level", "overview",
+)
+
+
+def _is_summary_question(question: str) -> bool:
+    q = question.lower()
+    return any(p in q for p in _SUMMARY_PATTERNS)
 
 
 def _get_embedder():
     global _embedder
     if _embedder is None:
-        _embedder = SentenceTransformer(EMBEDDING_MODEL)
+        _embedder = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
     return _embedder
 
 
@@ -25,12 +40,15 @@ def _get_reranker():
     return _reranker
 
 
-def _get_collection():
-    global _collection
-    if _collection is None:
-        client = chromadb.PersistentClient(path=CHROMA_DIR)
-        _collection = client.get_or_create_collection(CHROMA_COLLECTION)
-    return _collection
+def _get_vectorstore():
+    global _vectorstore
+    if _vectorstore is None:
+        _vectorstore = Chroma(
+            collection_name=CHROMA_COLLECTION,
+            embedding_function=_get_embedder(),
+            persist_directory=CHROMA_DIR,
+        )
+    return _vectorstore
 
 
 def retrieve(question: str, top_k: int = TOP_K_RETRIEVE, source_filter: str = None) -> dict:
@@ -42,28 +60,26 @@ def retrieve(question: str, top_k: int = TOP_K_RETRIEVE, source_filter: str = No
     Returns:
         {"chunks": [...], "warning": str or None}
     """
-    embedder = _get_embedder()
-    collection = _get_collection()
+    vectorstore = _get_vectorstore()
 
-    query_embedding = embedder.encode([question]).tolist()
-    query_params = {"query_embeddings": query_embedding, "n_results": top_k}
+    search_kwargs = {"k": top_k}
     if source_filter:
-        query_params["where"] = {"source": source_filter}
+        search_kwargs["filter"] = {"source": source_filter}
 
-    results = collection.query(**query_params)
+    # LangChain Chroma returns (Document, score) tuples — score is L2 distance
+    results = vectorstore.similarity_search_with_score(question, **search_kwargs)
+
+    if not results:
+        return {"chunks": [], "warning": "No documents have been uploaded yet."}
 
     candidates = []
-    for i in range(len(results["documents"][0])):
-        meta = results["metadatas"][0][i]
+    for doc, distance in results:
         candidates.append({
-            "text": results["documents"][0][i],
-            "source": meta["source"],
-            "page_number": meta["page_number"],
-            "chunk_index": meta["chunk_index"],
+            "text": doc.page_content,
+            "source": doc.metadata["source"],
+            "page_number": doc.metadata["page_number"],
+            "chunk_index": doc.metadata["chunk_index"],
         })
-
-    if not candidates:
-        return {"chunks": [], "warning": "No documents have been uploaded yet."}
 
     if USE_RERANKER:
         reranker = _get_reranker()
@@ -73,16 +89,16 @@ def retrieve(question: str, top_k: int = TOP_K_RETRIEVE, source_filter: str = No
             chunk["score"] = round(score, 4)
         ranked = sorted(candidates, key=lambda c: c["score"], reverse=True)
     else:
-        # fallback: use bi-encoder distance converted to similarity score
-        for i, chunk in enumerate(candidates):
-            distance = results["distances"][0][i]
+        for chunk, (_, distance) in zip(candidates, results):
             chunk["score"] = round(max(0.0, 1 - distance / 2), 4)
         ranked = sorted(candidates, key=lambda c: c["score"], reverse=True)
 
     top_chunks = ranked[:TOP_K_FINAL]
 
+    # Summary-type questions score low across the board, so bypass the relevance
+    # gate for them and let the LLM synthesize from the top chunks.
     warning = None
-    if top_chunks[0]["score"] < RELEVANCE_THRESHOLD:
+    if not _is_summary_question(question) and top_chunks[0]["score"] < RELEVANCE_THRESHOLD:
         warning = "No relevant content found in the uploaded documents for this question."
 
     return {"chunks": top_chunks, "warning": warning}
