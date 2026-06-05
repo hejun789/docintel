@@ -156,6 +156,17 @@ The cross-encoder re-ranker lifts Hit@3 from **79% → 93%** — concrete eviden
 
 ---
 
+## Tests
+
+Unit tests cover the highest-risk pure logic — the summary-question gate, the chunking pipeline, and the upload filter:
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+---
+
 ## Planned improvements
 
 - Source passage highlighting (show exact text used, not just page number)
