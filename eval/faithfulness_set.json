@@ -1,0 +1,25 @@
+{
+  "document": "HeJun(TP086047) Assignment Part1.docx",
+  "questions": [
+    {
+      "question": "What three detection techniques does PhishGuard-LLM combine?",
+      "reference": "Fine-tuned RoBERTa classification, zero-shot GPT reasoning, and AI-content fingerprinting (perplexity/burstiness)."
+    },
+    {
+      "question": "How does the system detect AI-generated content before classification?",
+      "reference": "It measures perplexity and burstiness to flag machine-generated text before any classifier runs."
+    },
+    {
+      "question": "What does the Decision Fusion Layer do?",
+      "reference": "It combines the three detection modules' outputs via a weighted confidence-based scoring system."
+    },
+    {
+      "question": "What is the average cost of a phishing data breach in 2024?",
+      "reference": "USD 4.88 million."
+    },
+    {
+      "question": "What explainability methods does the framework use?",
+      "reference": "SHAP values and attention-based visualisation."
+    }
+  ]
+}
