@@ -1,8 +1,7 @@
 import os
 from flask import Flask, request, jsonify, render_template, Response, stream_with_context
 from ingest import extract_text_from_file, chunk_text, store_chunks, delete_document, list_documents
-from retriever import retrieve
-from generator import generate_answer_stream
+import agent
 
 app = Flask(__name__)
 
@@ -85,16 +84,12 @@ def ask():
     history = data.get("history", [])
     source_filter = data.get("document") or None
 
-    result = retrieve(question, source_filter=source_filter)
+    result = agent.run(question, source_filter=source_filter, history=history)
 
     def stream():
-        if result["warning"]:
-            import json
-            msg = "I don't have enough information in the uploaded documents to answer this question."
-            yield f"data: {json.dumps({'token': msg})}\n\n"
-            yield f"data: {json.dumps({'done': True, 'sources': [], 'warning': result['warning']})}\n\n"
-            return
-        yield from generate_answer_stream(question, result["chunks"], history)
+        import json
+        yield f"data: {json.dumps({'token': result['answer']})}\n\n"
+        yield f"data: {json.dumps({'done': True, 'sources': result['citations'], 'trace': result['trace']})}\n\n"
 
     return Response(stream_with_context(stream()), content_type="text/event-stream")
 
