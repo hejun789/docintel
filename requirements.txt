@@ -8,6 +8,14 @@ pymupdf==1.27.2.3
 langchain-text-splitters==1.1.2
 chromadb==1.5.9
 sentence-transformers==5.5.1
+# Pinned transitive ML deps — these are unpinned by the libraries above, so pip
+# otherwise pulls the latest (which broke the HF Space build). Pinned to the
+# versions verified working locally.
+transformers==5.9.0
+huggingface-hub==1.17.0
+tokenizers==0.22.2
+numpy==2.4.4
+onnxruntime==1.26.0
 python-docx==1.2.0
 python-dotenv==1.2.2
 requests==2.33.1
