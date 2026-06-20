@@ -38,6 +38,30 @@ The two-stage retrieval is the key engineering decision: a **bi-encoder** (fast,
 
 ---
 
+## Agent
+
+Answering does not run a fixed pipeline — it runs a **tool-using agent** that decides at runtime what to do:
+
+```
+Question
+  └─> AGENT LOOP (max N iterations)
+        model sees question + results so far, and chooses ONE:
+          - call retrieve(query)      → search the documents (multi-hop: call again with new queries)
+          - call list_documents()     → see what's available
+          - call finish(answer, cites)→ return a grounded, cited answer, or refuse
+        weak retrieval → the tool result hints the model to reformulate and retry
+  └─> grounded answer + page citations + a trace of the agent's steps
+```
+
+- **Multi-hop retrieval** — multi-part questions trigger several `retrieve` calls with different queries; simple ones use a single call.
+- **Self-correction** — when a retrieval scores below the relevance threshold, the agent reformulates the query and tries again.
+- **Grounded refusal** — if the documents don't contain the answer (or the iteration cap is hit), the agent returns an explicit "not in your documents" with no citations, never an invented answer.
+- **No agent framework** — the control loop is hand-written directly on the model's native function-calling API (via OpenRouter), not LangChain `AgentExecutor` or LangGraph, so the reasoning loop is fully visible and the per-question cost is bounded by an iteration cap.
+
+The agent's tools (`retrieve`, `list_documents`) wrap the existing retrieval core; `finish` forces structured, cited output.
+
+---
+
 ## Features
 
 - Upload PDF, DOCX, TXT, and Markdown files
@@ -154,11 +178,31 @@ Results on a 14-question set (sample research paper):
 
 The cross-encoder re-ranker lifts Hit@3 from **79% → 93%** — concrete evidence that the second retrieval stage earns its cost by pulling the genuinely relevant chunk into the top-3 that reach the LLM.
 
+### Answer faithfulness (LLM-as-judge)
+
+Retrieval recall measures whether the right chunk is *found*; it does not measure whether the *answer* is faithful. `eval/faithfulness.py` runs the agent end-to-end on a labeled Q&A set and uses a judge model to score each answer on groundedness, relevance, and correctness:
+
+```
+python eval/faithfulness.py
+```
+
+Results on a 5-question set (`gpt-oss-120b:free` agent, `gpt-oss-20b:free` judge):
+
+| Metric | Score | Meaning |
+|---|---|---|
+| Groundedness | 0.80 | Claims consistent with the source (no invented facts) |
+| Relevance | 1.00 | Answer addresses the question |
+| Correctness | 0.80 | Answer matches the reference |
+
+### Agent behaviour
+
+The agent's *decisions* (not just its answers) are asserted in `tests/test_agent.py` against the step trace: simple questions retrieve once, multi-part questions retrieve multiple times, off-topic questions are refused, and weak first retrievals trigger reformulation.
+
 ---
 
 ## Tests
 
-Unit tests cover the highest-risk pure logic — the summary-question gate, the chunking pipeline, and the upload filter:
+Unit tests cover the highest-risk logic — the agent control loop (multi-hop, refusal, iteration cap, via a scripted model), the tool-calling client, the `/ask` route, the summary-question gate, the chunking pipeline, and the upload filter:
 
 ```bash
 pip install -r requirements-dev.txt
