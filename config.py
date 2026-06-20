@@ -10,7 +10,7 @@ OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.1-8b-instru
 # Agent / judge models (default to the main model; override per-env for tool-calling-capable models)
 AGENT_MODEL = os.getenv("AGENT_MODEL", OPENROUTER_MODEL)
 JUDGE_MODEL = os.getenv("JUDGE_MODEL", OPENROUTER_MODEL)
-AGENT_MAX_ITERS = int(os.getenv("AGENT_MAX_ITERS", "5"))
+AGENT_MAX_ITERS = int(os.getenv("AGENT_MAX_ITERS", "6"))
 
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"

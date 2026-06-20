@@ -46,7 +46,7 @@ def _scripted_chat(script):
     """Returns a chat() that yields each scripted response in turn."""
     it = iter(script)
 
-    def chat(messages, tools=None, model=None):
+    def chat(messages, tools=None, model=None, tool_choice=None):
         return next(it)
 
     return chat

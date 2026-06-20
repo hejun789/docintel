@@ -88,10 +88,14 @@ def ask():
 
     result = agent.run(question, source_filter=source_filter, history=history)
 
+    # The frontend renders sources as `source · p.{page_number}`; map the agent's
+    # citation shape ({source, page}) onto that contract.
+    sources = [{"source": c.get("source"), "page_number": c.get("page")} for c in result["citations"]]
+
     def stream():
         import json
         yield f"data: {json.dumps({'token': result['answer']})}\n\n"
-        yield f"data: {json.dumps({'done': True, 'sources': result['citations'], 'trace': result['trace']})}\n\n"
+        yield f"data: {json.dumps({'done': True, 'sources': sources, 'trace': result['trace']})}\n\n"
 
     return Response(stream_with_context(stream()), content_type="text/event-stream")
 

@@ -16,15 +16,16 @@ def _get_client():
     return _client
 
 
-def chat(messages, tools=None, model=None):
+def chat(messages, tools=None, model=None, tool_choice=None):
     """Call the model once. Returns {'content': str|None, 'tool_calls': [...]}.
 
     Each tool_call is {'id', 'name', 'arguments'} where arguments is a raw JSON string.
+    tool_choice defaults to "auto"; pass a specific {"type": "function", ...} to force one.
     """
     kwargs = {"model": model or AGENT_MODEL, "messages": messages}
     if tools:
         kwargs["tools"] = tools
-        kwargs["tool_choice"] = "auto"
+        kwargs["tool_choice"] = tool_choice or "auto"
 
     message = _get_client().chat.completions.create(**kwargs).choices[0].message
     tool_calls = [

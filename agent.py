@@ -121,6 +121,45 @@ def _assistant_message(resp):
     return msg
 
 
+def _citations_from_trace(trace, limit=4):
+    """Citations are the pages the retriever actually surfaced with strong relevance
+    — accurate by construction, unlike the model's self-reported citations."""
+    seen, cites = set(), []
+    for step in trace:
+        if step["tool"] != "retrieve":
+            continue
+        res = step["result"]
+        top = res.get("top_score")
+        if top is None or top < RELEVANCE_THRESHOLD:
+            continue  # weak retrieval — not a real source
+        for r in res.get("results", [])[:1]:  # the top hit of each strong retrieval
+            key = (r["source"], r["page"])
+            if key not in seen:
+                seen.add(key)
+                cites.append({"source": r["source"], "page": r["page"]})
+    return cites[:limit]
+
+
+def _extract_answer(content):
+    """Some free models emit the finish payload as a JSON string in the message
+    content instead of a tool call; pull the answer text out when that happens."""
+    try:
+        data = json.loads(content)
+        if isinstance(data, dict) and "answer" in data:
+            return data["answer"]
+    except (json.JSONDecodeError, TypeError):
+        pass
+    return content
+
+
+def _finalize(answer, trace):
+    """Attach trace-derived citations; refuse if nothing relevant was retrieved."""
+    citations = _citations_from_trace(trace)
+    if not citations:
+        return {"answer": _REFUSAL, "citations": [], "trace": trace, "refused": True}
+    return {"answer": answer or _REFUSAL, "citations": citations, "trace": trace, "refused": False}
+
+
 def run(question, source_filter=None, history=None, chat=llm.chat, max_iters=AGENT_MAX_ITERS):
     """Drive the agent loop. Returns {answer, citations, trace, refused}."""
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -129,13 +168,28 @@ def run(question, source_filter=None, history=None, chat=llm.chat, max_iters=AGE
     messages.append({"role": "user", "content": question})
 
     trace = []
-    for _ in range(max_iters):
-        resp = chat(messages, tools=TOOL_SCHEMAS)
+    for i in range(max_iters):
+        # On the final allowed step, force the agent to answer from what it has
+        # gathered rather than retrieving again and running out of steps.
+        last_step = i == max_iters - 1
+        if last_step:
+            messages.append({
+                "role": "system",
+                "content": (
+                    "This is your final step. Based on the passages already retrieved, "
+                    "call finish now with your best grounded answer and citations. "
+                    "Do not call retrieve again."
+                ),
+            })
+            tool_choice = {"type": "function", "function": {"name": "finish"}}
+        else:
+            tool_choice = None
+
+        resp = chat(messages, tools=TOOL_SCHEMAS, tool_choice=tool_choice)
 
         if not resp["tool_calls"]:
-            # Model answered without calling finish — accept its content as the answer.
-            return {"answer": resp["content"] or _REFUSAL, "citations": [],
-                    "trace": trace, "refused": not resp["content"]}
+            # Model answered as plain text instead of calling finish — accept it.
+            return _finalize(_extract_answer(resp["content"] or ""), trace)
 
         messages.append(_assistant_message(resp))
 
@@ -147,9 +201,7 @@ def run(question, source_filter=None, history=None, chat=llm.chat, max_iters=AGE
                 args = {}
 
             if name == "finish":
-                citations = args.get("citations", [])
-                return {"answer": args.get("answer", _REFUSAL), "citations": citations,
-                        "trace": trace, "refused": len(citations) == 0}
+                return _finalize(args.get("answer"), trace)
 
             func = TOOLS.get(name)
             result = func(**args) if func else {"error": f"unknown tool: {name}"}
@@ -157,5 +209,5 @@ def run(question, source_filter=None, history=None, chat=llm.chat, max_iters=AGE
             messages.append({"role": "tool", "tool_call_id": call["id"],
                              "name": name, "content": json.dumps(result)})
 
-    # Iteration cap reached without finishing → grounded refusal.
-    return {"answer": _REFUSAL, "citations": [], "trace": trace, "refused": True}
+    # Iteration cap reached → answer from what was gathered, or refuse if nothing relevant.
+    return _finalize(None, trace)
