@@ -1,5 +1,6 @@
 """Tool-using agent: tools, schemas, and the control loop."""
 import json
+import re
 
 import llm
 from config import RELEVANCE_THRESHOLD, AGENT_MAX_ITERS
@@ -152,12 +153,29 @@ def _extract_answer(content):
     return content
 
 
+# A citation array the model sometimes appends inline at the end of its answer text,
+# e.g. `... why an email was flagged [{"source": "...", "page": 5}].`
+_TRAILING_CITES = re.compile(
+    r'\s*[\[【]\s*\{[^}]*"(?:source|page)"[^}]*\}.*?[\]】]\s*[.。]?\s*\Z', re.DOTALL
+)
+
+
+def _clean_answer(text):
+    """Strip the inline citation JSON and a leading '**Answer:**' label the model
+    sometimes adds — citations are shown separately as chips."""
+    text = (text or "").strip()
+    text = _TRAILING_CITES.sub("", text).strip()
+    text = re.sub(r"^\*\*\s*answer\s*:?\s*\*\*\s*", "", text, flags=re.IGNORECASE).strip()
+    return text
+
+
 def _finalize(answer, trace):
     """Attach trace-derived citations; refuse if nothing relevant was retrieved."""
     citations = _citations_from_trace(trace)
     if not citations:
         return {"answer": _REFUSAL, "citations": [], "trace": trace, "refused": True}
-    return {"answer": answer or _REFUSAL, "citations": citations, "trace": trace, "refused": False}
+    return {"answer": _clean_answer(answer) or _REFUSAL, "citations": citations,
+            "trace": trace, "refused": False}
 
 
 def run(question, source_filter=None, history=None, chat=llm.chat, max_iters=AGENT_MAX_ITERS):

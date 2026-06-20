@@ -36,6 +36,26 @@ def test_tool_schemas_present():
     assert names == {"retrieve", "list_documents", "finish"}
 
 
+def test_clean_answer_strips_trailing_citation_json():
+    raw = 'The cost was USD 4.88 million [{"source": "doc.pdf", "page": 3}].'
+    assert agent._clean_answer(raw) == "The cost was USD 4.88 million"
+
+
+def test_clean_answer_strips_cjk_bracket_citations():
+    raw = 'It uses SHAP values 【{"source": "doc.pdf", "page": 5}].'
+    assert agent._clean_answer(raw) == "It uses SHAP values"
+
+
+def test_clean_answer_strips_leading_answer_label():
+    assert agent._clean_answer("**Answer:** The framework has five layers.") == \
+        "The framework has five layers."
+
+
+def test_clean_answer_leaves_normal_text_untouched():
+    text = "RoBERTa achieved an accuracy of over 0.99."
+    assert agent._clean_answer(text) == text
+
+
 # ── Task 4: control loop (also the agent-behaviour eval) ─────────────────────
 
 def _tc(name, args, id="1"):
