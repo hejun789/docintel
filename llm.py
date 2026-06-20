@@ -1,6 +1,4 @@
 """Thin OpenRouter chat client with native tool-calling, normalized to plain dicts."""
-from openai import OpenAI
-
 from config import OPENROUTER_API_KEY, AGENT_MODEL
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
@@ -11,6 +9,9 @@ _client = None
 def _get_client():
     global _client
     if _client is None:
+        # Imported lazily so importing this module (at server startup) doesn't
+        # pull in the heavy openai SDK — it's only needed when a question is asked.
+        from openai import OpenAI
         _client = OpenAI(api_key=OPENROUTER_API_KEY, base_url=OPENROUTER_BASE_URL)
     return _client
 

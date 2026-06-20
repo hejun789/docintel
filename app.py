@@ -3,6 +3,8 @@ from flask import Flask, request, jsonify, render_template, Response, stream_wit
 from ingest import extract_text_from_file, chunk_text, store_chunks, delete_document, list_documents
 import agent
 
+print("BOOT: app module loaded, Flask starting", flush=True)
+
 app = Flask(__name__)
 
 UPLOAD_FOLDER = "uploads"
