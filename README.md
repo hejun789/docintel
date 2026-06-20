@@ -94,11 +94,14 @@ The agent's tools (`retrieve`, `list_documents`) wrap the existing retrieval cor
 ```
 docintel/
 ├── app.py          # Flask routes: /upload, /ask, /documents, /document/<name>
+├── agent.py        # Tool-using agent: tools, schemas, and the control loop
+├── llm.py          # OpenRouter native function-calling client
 ├── ingest.py       # Extract → chunk → embed → store pipeline
 ├── retriever.py    # Two-stage retrieval: bi-encoder + cross-encoder re-ranking
-├── generator.py    # Prompt construction + LLM answer generation via OpenRouter
 ├── config.py       # Model names, chunk parameters, thresholds
 ├── requirements.txt
+├── eval/           # Retrieval, faithfulness, and agent-behaviour evaluation
+├── tests/          # pytest unit + behaviour tests
 ├── templates/
 │   └── index.html
 └── static/

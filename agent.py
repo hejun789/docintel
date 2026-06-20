@@ -204,7 +204,10 @@ def run(question, source_filter=None, history=None, chat=llm.chat, max_iters=AGE
                 return _finalize(args.get("answer"), trace)
 
             func = TOOLS.get(name)
-            result = func(**args) if func else {"error": f"unknown tool: {name}"}
+            try:
+                result = func(**args) if func else {"error": f"unknown tool: {name}"}
+            except Exception as e:  # malformed args from the model shouldn't crash the request
+                result = {"error": f"tool '{name}' failed: {e}"}
             trace.append({"tool": name, "args": args, "result": result})
             messages.append({"role": "tool", "tool_call_id": call["id"],
                              "name": name, "content": json.dumps(result)})

@@ -74,19 +74,24 @@ def remove_document(filename):
 
 @app.route("/ask", methods=["POST"])
 def ask():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
 
-    if not data or "question" not in data:
-        return jsonify({"error": "Request body must include a 'question' field"}), 400
-
-    question = data["question"].strip()
-    if not question:
-        return jsonify({"error": "Question cannot be empty"}), 400
+    question = data.get("question")
+    if not isinstance(question, str) or not question.strip():
+        return jsonify({"error": "Request body must include a non-empty 'question' field"}), 400
+    question = question.strip()
 
     history = data.get("history", [])
     source_filter = data.get("document") or None
 
-    result = agent.run(question, source_filter=source_filter, history=history)
+    try:
+        result = agent.run(question, source_filter=source_filter, history=history)
+    except Exception:
+        import traceback; traceback.print_exc()
+        result = {
+            "answer": "Sorry — something went wrong while answering (the model may be rate-limited). Please try again.",
+            "citations": [], "trace": [], "refused": True,
+        }
 
     # The frontend renders sources as `source · p.{page_number}`; map the agent's
     # citation shape ({source, page}) onto that contract.
