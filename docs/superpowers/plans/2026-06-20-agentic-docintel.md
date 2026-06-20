@@ -858,14 +858,28 @@ git commit -m "feat: add faithfulness LLM-as-judge eval"
 **Interfaces:**
 - Consumes: everything above. No new code interfaces.
 
+- [ ] **Step 0 (smoke test FIRST): confirm the model actually emits tool_calls**
+
+Before relying on it, verify the free model returns structured tool calls (some advertise
+tools but emit them flakily):
+```bash
+python -c "import llm; r=llm.chat([{'role':'user','content':'List my documents.'}], tools=__import__('agent').TOOL_SCHEMAS); print(r)"
+```
+Expected: the response dict contains a non-empty `tool_calls` list. If it's empty/erratic,
+switch `AGENT_MODEL` to another free tool-caller (e.g. `openai/gpt-oss-20b:free`,
+`google/gemma-4-31b-it:free`) and retry.
+
 - [ ] **Step 1: Set a tool-calling model and run the app**
 
-Ensure `.env` has a function-calling-capable model, e.g.:
+Ensure `.env` has a function-calling-capable FREE model:
 ```
-AGENT_MODEL=openai/gpt-4o-mini
-JUDGE_MODEL=openai/gpt-4o-mini
+AGENT_MODEL=openai/gpt-oss-120b:free
+JUDGE_MODEL=openai/gpt-oss-20b:free
+AGENT_MAX_ITERS=4
 ```
-(or a free OpenRouter model that advertises tool support). Then run:
+Note: agents make several calls per question, so on the free tier (50 requests/day with no
+credits, 1000/day with a one-time $10 top-up) keep the eval set small if you stay at $0.
+Then run:
 ```bash
 python app.py
 ```
