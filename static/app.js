@@ -7,19 +7,167 @@ const questionInput = document.getElementById("question-input");
 const askBtn        = document.getElementById("ask-btn");
 const chatMessages  = document.getElementById("chat-messages");
 const docFilter     = document.getElementById("doc-filter");
+const sessionList   = document.getElementById("session-list");
+const newChatBtn    = document.getElementById("new-chat-btn");
 
-let conversationHistory = [];  // [{role, content}, ...]
+// ── Chat sessions (persisted in the browser via localStorage) ────────────────
+// Stored client-side (not on the server) because the deployment filesystem is
+// ephemeral; localStorage survives page reloads, restarts, and redeploys.
 
-// ── On load: fetch persisted documents ──────────────────────────────────────
+const STORE_KEY = "docintel.sessions.v1";
+let sessions = [];   // [{ id, title, messages: [{role, content, sources?, warning?}], doc }]
+let activeId = null;
+
+function loadStore() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (raw && Array.isArray(raw.sessions) && raw.sessions.length) {
+      sessions = raw.sessions;
+      activeId = raw.activeId;
+    }
+  } catch {}
+  if (!sessions.length) createSession();
+  if (!sessions.find(s => s.id === activeId)) activeId = sessions[0].id;
+}
+
+function saveStore() {
+  localStorage.setItem(STORE_KEY, JSON.stringify({ sessions, activeId }));
+}
+
+function activeSession() {
+  return sessions.find(s => s.id === activeId);
+}
+
+function createSession() {
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const s = { id, title: "New chat", messages: [], doc: "" };
+  sessions.unshift(s);
+  activeId = id;
+  saveStore();
+  return s;
+}
+
+function switchSession(id) {
+  activeId = id;
+  saveStore();
+  renderSessionList();
+  renderActiveSession();
+}
+
+function deleteSession(id) {
+  sessions = sessions.filter(s => s.id !== id);
+  if (!sessions.length) createSession();
+  else if (activeId === id) activeId = sessions[0].id;
+  saveStore();
+  renderSessionList();
+  renderActiveSession();
+}
+
+function renameSession(id, title) {
+  const s = sessions.find(x => x.id === id);
+  if (s) { s.title = (title || "").trim() || s.title; saveStore(); }
+  renderSessionList();
+}
+
+// ── Session sidebar rendering ────────────────────────────────────────────────
+
+function renderSessionList() {
+  sessionList.innerHTML = "";
+  sessions.forEach(s => {
+    const li = document.createElement("li");
+    li.className = "session-item" + (s.id === activeId ? " active" : "");
+    li.addEventListener("click", () => switchSession(s.id));
+
+    const title = document.createElement("span");
+    title.className = "session-title";
+    title.textContent = s.title;
+
+    const actions = document.createElement("span");
+    actions.className = "session-actions";
+
+    const editBtn = document.createElement("button");
+    editBtn.className = "session-btn";
+    editBtn.title = "Rename chat";
+    editBtn.textContent = "✎";
+    editBtn.addEventListener("click", (e) => { e.stopPropagation(); startRename(li, s); });
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "session-btn";
+    delBtn.title = "Delete chat";
+    delBtn.textContent = "×";
+    delBtn.addEventListener("click", (e) => { e.stopPropagation(); deleteSession(s.id); });
+
+    actions.appendChild(editBtn);
+    actions.appendChild(delBtn);
+    li.appendChild(title);
+    li.appendChild(actions);
+    sessionList.appendChild(li);
+  });
+}
+
+function startRename(li, s) {
+  const input = document.createElement("input");
+  input.className = "session-edit-input";
+  input.value = s.title;
+  input.addEventListener("click", (e) => e.stopPropagation());
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") input.blur();
+    if (e.key === "Escape") renderSessionList();
+  });
+  input.addEventListener("blur", () => renameSession(s.id, input.value));
+  li.innerHTML = "";
+  li.appendChild(input);
+  input.focus();
+  input.select();
+}
+
+// ── Active session → chat area ───────────────────────────────────────────────
+
+function renderActiveSession() {
+  const s = activeSession();
+  chatMessages.innerHTML = "";
+  if (!s || !s.messages.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    empty.textContent = "Upload a document, then ask a question about it.";
+    chatMessages.appendChild(empty);
+  } else {
+    s.messages.forEach(m => {
+      if (m.role === "user") {
+        appendMessage("user", m.content);
+      } else {
+        const div = appendMessage("assistant", m.content, m.warning);
+        if (m.sources && m.sources.length) attachSources(div, m.sources);
+      }
+    });
+  }
+  docFilter.value = (s && s.doc) || "";
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+newChatBtn.addEventListener("click", () => {
+  createSession();
+  renderSessionList();
+  renderActiveSession();
+  questionInput.focus();
+});
+
+// ── On load ──────────────────────────────────────────────────────────────────
+
+loadStore();
+renderSessionList();
+renderActiveSession();
+loadDocuments();
 
 async function loadDocuments() {
   try {
     const res = await fetch("/documents");
     const data = await res.json();
     data.documents.forEach(name => addDocToList(name));
+    // Re-apply the active session's saved document filter now that options exist.
+    docFilter.value = (activeSession() && activeSession().doc) || "";
   } catch {}
 }
-loadDocuments();
 
 // ── Upload ───────────────────────────────────────────────────────────────────
 
@@ -63,7 +211,6 @@ async function uploadFile(file) {
     if (!res.ok) { showStatus(data.error || "Upload failed.", "error"); return; }
     showStatus(`✓ ${data.message} (${data.chunks} chunks)`, "success");
     addDocToList(file.name);
-    clearEmptyState();
   } catch {
     showStatus("Network error during upload.", "error");
   }
@@ -111,7 +258,6 @@ async function removeDoc(name, listItem) {
     if (res.ok) {
       listItem.remove();
       showStatus(`Removed "${name}".`, "success");
-      // Remove from dropdown
       const opt = docFilter.querySelector(`option[data-name="${name}"]`);
       if (opt) opt.remove();
     } else {
@@ -129,44 +275,52 @@ askForm.addEventListener("submit", async (e) => {
   const question = questionInput.value.trim();
   if (!question) return;
 
+  const s = activeSession();
+  const history = s.messages.slice(-6).map(m => ({ role: m.role, content: m.content }));
+
   questionInput.value = "";
   askBtn.disabled = true;
   clearEmptyState();
 
   appendMessage("user", question);
-  const thinking = appendThinking();
+  s.messages.push({ role: "user", content: question });
+  if (s.title === "New chat") { s.title = question.slice(0, 40); renderSessionList(); }
 
   const selectedDoc = docFilter.value || null;
+  s.doc = docFilter.value || "";
+  saveStore();
+
+  const thinking = appendThinking();
 
   try {
     const res = await fetch("/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        question,
-        history: conversationHistory.slice(-6),  // last 3 exchanges
-        document: selectedDoc,
-      }),
+      body: JSON.stringify({ question, history, document: selectedDoc }),
     });
 
     thinking.remove();
 
     if (!res.ok) {
       const data = await res.json();
-      appendMessage("assistant", data.error || "Something went wrong.", true);
+      const msg = data.error || "Something went wrong.";
+      appendMessage("assistant", msg, true);
+      s.messages.push({ role: "assistant", content: msg, warning: true });
+      saveStore();
       askBtn.disabled = false;
       return;
     }
 
     const { answer, sources } = await readStream(res);
-
-    // Add to conversation history (without context block — just Q&A)
-    conversationHistory.push({ role: "user", content: question });
-    conversationHistory.push({ role: "assistant", content: answer });
+    s.messages.push({ role: "assistant", content: answer, sources });
+    saveStore();
 
   } catch (err) {
     thinking.remove();
-    appendMessage("assistant", "Network error. Is the server running?", true);
+    const msg = "Network error. Is the server running?";
+    appendMessage("assistant", msg, true);
+    s.messages.push({ role: "assistant", content: msg, warning: true });
+    saveStore();
   }
 
   askBtn.disabled = false;
@@ -212,15 +366,7 @@ async function readStream(response) {
 
         if (data.done) {
           if (data.sources && data.sources.length > 0 && messageDiv) {
-            const sourceDiv = document.createElement("div");
-            sourceDiv.className = "sources";
-            data.sources.forEach(s => {
-              const tag = document.createElement("span");
-              tag.className = "source-tag";
-              tag.textContent = `${s.source} · p.${s.page_number}`;
-              sourceDiv.appendChild(tag);
-            });
-            messageDiv.appendChild(sourceDiv);
+            attachSources(messageDiv, data.sources);
           }
           return { answer: answerText, sources: data.sources || [] };
         }
@@ -229,6 +375,18 @@ async function readStream(response) {
   }
 
   return { answer: answerText, sources: [] };
+}
+
+function attachSources(messageDiv, sources) {
+  const sourceDiv = document.createElement("div");
+  sourceDiv.className = "sources";
+  sources.forEach(s => {
+    const tag = document.createElement("span");
+    tag.className = "source-tag";
+    tag.textContent = `${s.source} · p.${s.page_number}`;
+    sourceDiv.appendChild(tag);
+  });
+  messageDiv.appendChild(sourceDiv);
 }
 
 function appendMessage(role, text, isWarning = false) {

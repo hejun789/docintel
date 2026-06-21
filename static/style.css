@@ -23,7 +23,7 @@ header {
 
 main {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 230px 280px 1fr;
   gap: 0;
   flex: 1;
   overflow: hidden;
@@ -34,6 +34,90 @@ main {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+#sessions-panel {
+  border-right: 1px solid #e0e0e0;
+  padding: 20px 14px;
+  gap: 12px;
+}
+
+.sessions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px;
+}
+
+#new-chat-btn {
+  background: #4a6cf7;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+#new-chat-btn:hover { background: #3a5ce6; }
+
+.session-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.session-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px 8px 10px;
+  border-radius: 6px;
+  font-size: 0.83rem;
+  color: #444;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.session-item:hover { background: #f2f2f2; }
+.session-item.active { background: #e8edff; color: #2b3a8c; font-weight: 600; }
+
+.session-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-actions {
+  display: none;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.session-item:hover .session-actions,
+.session-item.active .session-actions { display: flex; }
+
+.session-btn {
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0 3px;
+  border-radius: 4px;
+}
+.session-btn:hover { color: #4a6cf7; background: #dfe6ff; }
+
+.session-edit-input {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid #4a6cf7;
+  border-radius: 5px;
+  font-size: 0.83rem;
+  outline: none;
 }
 
 #upload-panel {

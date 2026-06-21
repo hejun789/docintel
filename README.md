@@ -70,7 +70,8 @@ The agent's tools (`retrieve`, `list_documents`) wrap the existing retrieval cor
 - Persistent document library across server restarts
 - Delete documents (removes chunks from vector store)
 - Relevance threshold — explicitly says "I don't know" rather than hallucinating
-- Clean two-panel UI: document manager + chat interface
+- Multi-session chat with manual rename, persisted in the browser (localStorage) so history survives reloads and redeploys — no login required
+- Clean three-panel UI: chat sessions + document manager + chat interface
 
 ---
 
