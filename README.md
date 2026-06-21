@@ -194,9 +194,11 @@ Results on a 5-question set (`gpt-oss-120b:free` agent, `gpt-oss-20b:free` judge
 
 | Metric | Score | Meaning |
 |---|---|---|
-| Groundedness | 0.80 | Claims consistent with the source (no invented facts) |
-| Relevance | 1.00 | Answer addresses the question |
-| Correctness | 0.80 | Answer matches the reference |
+| Groundedness | ~0.9–1.0 | Claims consistent with the source (no invented facts) |
+| Relevance | ~1.0 | Answer addresses the question |
+| Correctness | ~0.9–1.0 | Answer matches the reference |
+
+> Scores are reported as a range because LLM-as-judge evaluation is **non-deterministic** — both the agent and the judge are stochastic models, so results vary run-to-run. For a precise figure, average over several runs or pin the temperature to 0; a single run is indicative, not exact.
 
 ### Agent behaviour
 
