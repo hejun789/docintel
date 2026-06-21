@@ -17,7 +17,7 @@ A RAG (Retrieval-Augmented Generation) pipeline that lets you upload documents a
 
 ## Demo
 
-**Live demo:** [[https://huggingface.co/spaces/hejun123/docintel](https://huggingface.co/spaces/hejun123/docintel)](https://hejun123-docintel.hf.space/)
+**Live demo:** (https://hejun123-docintel.hf.space/)
 
 Upload a PDF → Ask a question → Get a grounded answer with page citations.
 
