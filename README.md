@@ -125,6 +125,12 @@ pip install -r requirements.txt
 ```
 OPENROUTER_API_KEY=your_openrouter_key_here
 OPENROUTER_MODEL=nvidia/nemotron-3-super-120b-a12b:free
+
+# Optional — persist documents in Chroma Cloud instead of the local (ephemeral)
+# chroma_db/ directory, so they survive container restarts/redeploys:
+# CHROMA_API_KEY=your_chroma_cloud_key
+# CHROMA_TENANT=your_tenant_id
+# CHROMA_DATABASE=your_database_name
 ```
 
 Get a free API key at [openrouter.ai](https://openrouter.ai). Any model listed as free works.

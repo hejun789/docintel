@@ -5,7 +5,10 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.documents import Document as LCDocument
-from config import CHROMA_DIR, CHROMA_COLLECTION, EMBEDDING_MODEL
+from config import (
+    CHROMA_DIR, CHROMA_COLLECTION, EMBEDDING_MODEL,
+    CHROMA_API_KEY, CHROMA_TENANT, CHROMA_DATABASE,
+)
 
 _embedder = None
 _vectorstore = None
@@ -21,11 +24,22 @@ def _get_embedder():
 def _get_vectorstore():
     global _vectorstore
     if _vectorstore is None:
-        _vectorstore = Chroma(
-            collection_name=CHROMA_COLLECTION,
-            embedding_function=_get_embedder(),
-            persist_directory=CHROMA_DIR,
-        )
+        if CHROMA_API_KEY:
+            import chromadb
+            client = chromadb.CloudClient(
+                tenant=CHROMA_TENANT, database=CHROMA_DATABASE, api_key=CHROMA_API_KEY,
+            )
+            _vectorstore = Chroma(
+                client=client,
+                collection_name=CHROMA_COLLECTION,
+                embedding_function=_get_embedder(),
+            )
+        else:
+            _vectorstore = Chroma(
+                collection_name=CHROMA_COLLECTION,
+                embedding_function=_get_embedder(),
+                persist_directory=CHROMA_DIR,
+            )
     return _vectorstore
 
 

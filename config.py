@@ -19,6 +19,13 @@ USE_RERANKER = os.getenv("USE_RERANKER", "true").lower() == "true"
 CHROMA_DIR = "chroma_db"
 CHROMA_COLLECTION = "documents"
 
+# Chroma Cloud (optional): if these are set, documents persist in the cloud and
+# survive container restarts/redeploys. If unset, falls back to the local
+# ephemeral chroma_db/ directory.
+CHROMA_API_KEY = os.getenv("CHROMA_API_KEY", "")
+CHROMA_TENANT = os.getenv("CHROMA_TENANT", "")
+CHROMA_DATABASE = os.getenv("CHROMA_DATABASE", "")
+
 CHUNK_SIZE = 512
 CHUNK_OVERLAP = 100
 TOP_K_RETRIEVE = 20

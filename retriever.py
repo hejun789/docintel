@@ -3,6 +3,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from config import (
     CHROMA_DIR, CHROMA_COLLECTION, EMBEDDING_MODEL, RERANKER_MODEL,
     TOP_K_RETRIEVE, TOP_K_FINAL, RELEVANCE_THRESHOLD, USE_RERANKER,
+    CHROMA_API_KEY, CHROMA_TENANT, CHROMA_DATABASE,
 )
 
 _embedder = None
@@ -43,11 +44,22 @@ def _get_reranker():
 def _get_vectorstore():
     global _vectorstore
     if _vectorstore is None:
-        _vectorstore = Chroma(
-            collection_name=CHROMA_COLLECTION,
-            embedding_function=_get_embedder(),
-            persist_directory=CHROMA_DIR,
-        )
+        if CHROMA_API_KEY:
+            import chromadb
+            client = chromadb.CloudClient(
+                tenant=CHROMA_TENANT, database=CHROMA_DATABASE, api_key=CHROMA_API_KEY,
+            )
+            _vectorstore = Chroma(
+                client=client,
+                collection_name=CHROMA_COLLECTION,
+                embedding_function=_get_embedder(),
+            )
+        else:
+            _vectorstore = Chroma(
+                collection_name=CHROMA_COLLECTION,
+                embedding_function=_get_embedder(),
+                persist_directory=CHROMA_DIR,
+            )
     return _vectorstore
 
 
