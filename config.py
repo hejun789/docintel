@@ -11,6 +11,9 @@ OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.1-8b-instru
 AGENT_MODEL = os.getenv("AGENT_MODEL", OPENROUTER_MODEL)
 JUDGE_MODEL = os.getenv("JUDGE_MODEL", OPENROUTER_MODEL)
 AGENT_MAX_ITERS = int(os.getenv("AGENT_MAX_ITERS", "6"))
+# Low temperature → more deterministic, consistent answers (better for grounded
+# factual Q&A than the provider's default randomness).
+LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.2"))
 
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
@@ -30,4 +33,7 @@ CHUNK_SIZE = 512
 CHUNK_OVERLAP = 100
 TOP_K_RETRIEVE = 20
 TOP_K_FINAL = 5  # send more chunks to the LLM so large tables (e.g. rubrics) are less fragmented
-RELEVANCE_THRESHOLD = -2.0 if USE_RERANKER else 0.3
+# Cross-encoder cutoff for "relevant enough to answer from". -5.0 accepts
+# borderline-but-relevant content (e.g. dense table/rubric chunks score ~-3)
+# while still rejecting genuinely off-topic queries (which score ~-9 to -11).
+RELEVANCE_THRESHOLD = -5.0 if USE_RERANKER else 0.3

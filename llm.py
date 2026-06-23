@@ -1,5 +1,5 @@
 """Thin OpenRouter chat client with native tool-calling, normalized to plain dicts."""
-from config import OPENROUTER_API_KEY, AGENT_MODEL
+from config import OPENROUTER_API_KEY, AGENT_MODEL, LLM_TEMPERATURE
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
@@ -16,13 +16,18 @@ def _get_client():
     return _client
 
 
-def chat(messages, tools=None, model=None, tool_choice=None):
+def chat(messages, tools=None, model=None, tool_choice=None, temperature=None):
     """Call the model once. Returns {'content': str|None, 'tool_calls': [...]}.
 
     Each tool_call is {'id', 'name', 'arguments'} where arguments is a raw JSON string.
     tool_choice defaults to "auto"; pass a specific {"type": "function", ...} to force one.
+    temperature defaults to LLM_TEMPERATURE (low → consistent, deterministic answers).
     """
-    kwargs = {"model": model or AGENT_MODEL, "messages": messages}
+    kwargs = {
+        "model": model or AGENT_MODEL,
+        "messages": messages,
+        "temperature": LLM_TEMPERATURE if temperature is None else temperature,
+    }
     if tools:
         kwargs["tools"] = tools
         kwargs["tool_choice"] = tool_choice or "auto"
