@@ -270,6 +270,24 @@ async function removeDoc(name, listItem) {
 
 // ── Chat ─────────────────────────────────────────────────────────────────────
 
+// Auto-grow the textarea as the user types (up to a max), and send on Enter
+// (Shift+Enter inserts a newline) — like a modern chat input.
+const MAX_INPUT_HEIGHT = 160;
+
+function autoResizeInput() {
+  questionInput.style.height = "auto";
+  questionInput.style.height = Math.min(questionInput.scrollHeight, MAX_INPUT_HEIGHT) + "px";
+}
+
+questionInput.addEventListener("input", autoResizeInput);
+
+questionInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    askForm.requestSubmit();
+  }
+});
+
 askForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const question = questionInput.value.trim();
@@ -279,6 +297,7 @@ askForm.addEventListener("submit", async (e) => {
   const history = s.messages.slice(-6).map(m => ({ role: m.role, content: m.content }));
 
   questionInput.value = "";
+  questionInput.style.height = "auto";  // reset the grown textarea back to one line
   askBtn.disabled = true;
   clearEmptyState();
 
