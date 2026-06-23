@@ -20,11 +20,13 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config import TOP_K_RETRIEVE, TOP_K_FINAL
+from config import TOP_K_RETRIEVE
 from retriever import _get_vectorstore, _get_reranker
 
 EVAL_SET = os.path.join(os.path.dirname(os.path.abspath(__file__)), "eval_set.json")
-K = TOP_K_FINAL  # number of chunks that actually reach the LLM
+# Fixed at 3 so Hit@3 stays a stable, comparable metric independent of the
+# production TOP_K_FINAL setting (which can be tuned without changing the eval).
+K = 3
 
 
 def _is_gold(chunk_text: str, expects: list[str]) -> bool:

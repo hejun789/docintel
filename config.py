@@ -29,5 +29,5 @@ CHROMA_DATABASE = os.getenv("CHROMA_DATABASE", "")
 CHUNK_SIZE = 512
 CHUNK_OVERLAP = 100
 TOP_K_RETRIEVE = 20
-TOP_K_FINAL = 3
+TOP_K_FINAL = 5  # send more chunks to the LLM so large tables (e.g. rubrics) are less fragmented
 RELEVANCE_THRESHOLD = -2.0 if USE_RERANKER else 0.3
