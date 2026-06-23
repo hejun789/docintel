@@ -75,11 +75,21 @@ def extract_text_from_pdf(filepath: str) -> list[dict]:
 
 def extract_text_from_docx(filepath: str) -> list[dict]:
     doc = python_docx.Document(filepath)
-    paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+    blocks = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+
+    # python-docx's doc.paragraphs excludes text inside tables — but marking
+    # rubrics, requirement grids, etc. are usually IN tables. Pull those in too,
+    # one row per line with cells separated by " | ".
+    for table in doc.tables:
+        for row in table.rows:
+            cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+            if cells:
+                blocks.append(" | ".join(cells))
+
     pages = []
-    page_size = 15  # group paragraphs into pseudo-pages
-    for i in range(0, len(paragraphs), page_size):
-        text = "\n".join(paragraphs[i:i + page_size])
+    page_size = 15  # group blocks into pseudo-pages
+    for i in range(0, len(blocks), page_size):
+        text = "\n".join(blocks[i:i + page_size])
         pages.append({"text": text, "page_number": (i // page_size) + 1})
     return pages
 

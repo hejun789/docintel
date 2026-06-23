@@ -3,7 +3,7 @@
 A silent bug here (wrong metadata, dropped chunks) corrupts everything
 downstream, so chunk count, metadata, and indexing are worth pinning down.
 """
-from ingest import chunk_text
+from ingest import chunk_text, extract_text_from_docx
 
 
 def test_short_text_produces_one_chunk():
@@ -47,3 +47,19 @@ def test_chunk_index_is_sequential_across_pages():
 
 def test_empty_pages_produce_no_chunks():
     assert chunk_text([], "doc.pdf") == []
+
+
+def test_docx_extraction_includes_table_text(tmp_path):
+    import docx as python_docx
+    doc = python_docx.Document()
+    doc.add_paragraph("Assignment brief intro.")
+    table = doc.add_table(rows=1, cols=2)
+    table.rows[0].cells[0].text = "Distinction"
+    table.rows[0].cells[1].text = "70% and above"
+    path = tmp_path / "rubric.docx"
+    doc.save(str(path))
+
+    text = " ".join(p["text"] for p in extract_text_from_docx(str(path)))
+    assert "Assignment brief intro." in text
+    assert "Distinction" in text          # table content must be captured
+    assert "70% and above" in text
