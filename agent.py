@@ -186,6 +186,7 @@ def run(question, source_filter=None, history=None, chat=llm.chat, max_iters=AGE
     messages.append({"role": "user", "content": question})
 
     trace = []
+    tool_cache = {}  # (tool, args) -> result, so repeated searches are free
     for i in range(max_iters):
         # On the final allowed step, force the agent to answer from what it has
         # gathered rather than retrieving again and running out of steps.
@@ -222,10 +223,19 @@ def run(question, source_filter=None, history=None, chat=llm.chat, max_iters=AGE
                 return _finalize(args.get("answer"), trace)
 
             func = TOOLS.get(name)
-            try:
-                result = func(**args) if func else {"error": f"unknown tool: {name}"}
-            except Exception as e:  # malformed args from the model shouldn't crash the request
-                result = {"error": f"tool '{name}' failed: {e}"}
+            # Free-tier round-trips are slow, so never pay for the same search
+            # twice: serve a repeated query from cache and nudge the model on.
+            cache_key = (name, json.dumps(args, sort_keys=True))
+            if cache_key in tool_cache:
+                result = dict(tool_cache[cache_key])
+                result["hint"] = ("You already ran this exact query. Use the passages "
+                                  "you have, or try a clearly different query.")
+            else:
+                try:
+                    result = func(**args) if func else {"error": f"unknown tool: {name}"}
+                except Exception as e:  # malformed args from the model shouldn't crash the request
+                    result = {"error": f"tool '{name}' failed: {e}"}
+                tool_cache[cache_key] = result
             trace.append({"tool": name, "args": args, "result": result})
             messages.append({"role": "tool", "tool_call_id": call["id"],
                              "name": name, "content": json.dumps(result)})

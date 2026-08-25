@@ -8,6 +8,7 @@ from langchain_core.documents import Document as LCDocument
 from config import (
     CHROMA_DIR, CHROMA_COLLECTION, EMBEDDING_MODEL,
     CHROMA_API_KEY, CHROMA_TENANT, CHROMA_DATABASE,
+    CHUNK_SIZE, CHUNK_OVERLAP,
 )
 
 _embedder = None
@@ -123,8 +124,8 @@ def chunk_text(pages: list[dict], filename: str) -> list[dict]:
     Returns a list of dicts: {'text', 'source', 'page_number', 'chunk_index'}
     """
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=512,
-        chunk_overlap=100,
+        chunk_size=CHUNK_SIZE,
+        chunk_overlap=CHUNK_OVERLAP,
         separators=["\n\n", "\n", ". ", " ", ""],
     )
 

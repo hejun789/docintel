@@ -120,3 +120,43 @@ def test_iteration_cap_forces_refusal(monkeypatch):
     out = agent.run("q", chat=_scripted_chat(script), max_iters=3)
     assert out["refused"] is True
     assert sum(1 for t in out["trace"] if t["tool"] == "retrieve") == 3
+
+
+def test_repeated_query_is_served_from_cache(monkeypatch):
+    """The same search must not re-run — free-tier round-trips are expensive."""
+    calls = []
+
+    def counting_retrieve(query, source_filter=None):
+        calls.append(query)
+        return {"chunks": [{"text": "ctx", "source": "d.pdf", "page_number": 1,
+                            "chunk_index": 0, "score": 7.0}], "warning": None}
+
+    monkeypatch.setattr(agent, "_retrieve", counting_retrieve)
+    script = [
+        {"content": None, "tool_calls": [_tc("retrieve", {"query": "same"})]},
+        {"content": None, "tool_calls": [_tc("retrieve", {"query": "same"})]},  # repeat
+        {"content": None, "tool_calls": [_tc("finish", {"answer": "A", "citations": []})]},
+    ]
+    out = agent.run("q", chat=_scripted_chat(script))
+
+    assert len(calls) == 1                     # underlying retrieval ran once
+    assert len(out["trace"]) == 2              # but both attempts are traced
+    assert "already ran this exact query" in out["trace"][1]["result"]["hint"]
+
+
+def test_distinct_queries_are_not_cached(monkeypatch):
+    calls = []
+
+    def counting_retrieve(query, source_filter=None):
+        calls.append(query)
+        return {"chunks": [{"text": "ctx", "source": "d.pdf", "page_number": 1,
+                            "chunk_index": 0, "score": 7.0}], "warning": None}
+
+    monkeypatch.setattr(agent, "_retrieve", counting_retrieve)
+    script = [
+        {"content": None, "tool_calls": [_tc("retrieve", {"query": "first"})]},
+        {"content": None, "tool_calls": [_tc("retrieve", {"query": "second"})]},
+        {"content": None, "tool_calls": [_tc("finish", {"answer": "A", "citations": []})]},
+    ]
+    agent.run("q", chat=_scripted_chat(script))
+    assert calls == ["first", "second"]

@@ -63,3 +63,13 @@ def test_docx_extraction_includes_table_text(tmp_path):
     assert "Assignment brief intro." in text
     assert "Distinction" in text          # table content must be captured
     assert "70% and above" in text
+
+
+def test_chunking_uses_config_values(monkeypatch):
+    """CHUNK_SIZE/CHUNK_OVERLAP in config must actually drive the splitter."""
+    import ingest
+    monkeypatch.setattr(ingest, "CHUNK_SIZE", 100)
+    monkeypatch.setattr(ingest, "CHUNK_OVERLAP", 0)
+    pages = [{"text": "word " * 200, "page_number": 1}]
+    chunks = ingest.chunk_text(pages, "doc.pdf")
+    assert all(len(c["text"]) <= 100 for c in chunks)
